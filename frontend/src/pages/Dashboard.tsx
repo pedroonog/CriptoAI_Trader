@@ -15,6 +15,7 @@ function formatCryptoPrice(price: number) {
 }
 
 export default function Dashboard() {
+  const [botStopReason, setBotStopReason] = useState("");
   const [selectedCoin, setSelectedCoin] = useState('BTC');
   const [analysis, setAnalysis] = useState<any>(null);
   const [portfolio, setPortfolio] = useState<any>(null);
@@ -67,6 +68,7 @@ export default function Dashboard() {
       setAnalysis(analysisRes.data || analysisRes);
       setPortfolio(portfolioRes.data || portfolioRes);
       setBotRunning(botRes.data?.running || false);
+      setBotStopReason(botRes.data?.stop_reason || "");
       setProfitData(profitRes.data || profitRes);
       
       if (settingsRes.data && !showSettingsRef.current) {
@@ -86,6 +88,25 @@ export default function Dashboard() {
       setLoading(false);
     });
   };
+
+  {/* 🔥 ALERTA DE STOP */}
+  {!botRunning && botStopReason && (
+    <div className="bg-red-900/40 border border-red-500/50 rounded-xl p-4 mb-6 flex items-start gap-3 animate-pulse">
+      <span className="text-2xl">🚨</span>
+      <div className="flex-1">
+        <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider mb-1">
+          Robô Parado
+        </h3>
+        <p className="text-red-300 text-sm">{botStopReason}</p>
+      </div>
+      <button
+        onClick={toggleBot}
+        className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all"
+      >
+        Religar
+      </button>
+    </div>
+  )}
 
   // Polling de dados
   useEffect(() => {

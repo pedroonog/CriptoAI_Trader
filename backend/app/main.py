@@ -21,6 +21,9 @@ import time
 top_30_cache = []
 top_30_last_update = 0
 TOP_30_CACHE_DURATION = 300 # 5 minutos
+bot_running = False
+bot_task = None
+bot_stop_reason = ""  # 🔥 NOVO
 
 def get_top_30_binance_volume():
     global top_30_cache, top_30_last_update
@@ -132,6 +135,16 @@ bot_task = None
 
 async def auto_trade_loop():
     while bot_running:
+        
+        # 🔥 PROTEÇÃO 1: Stop geral se perda diária > 5%
+        daily_loss = abs(portfolio._get_profit_from_db(days=0))
+        total_equity = portfolio.get_status().get('total_equity', 0)
+        if total_equity > 0 and (daily_loss / total_equity) * 100 >= 5:
+            bot_stop_reason = "🛑 Perda diária de 5% atingida! Robô desligado automaticamente."
+            add_log(bot_stop_reason)
+            bot_running = False
+            break
+        
         symbols_to_scan = get_top_30_binance_volume()
         settings = load_settings()
         stop_loss_pct = settings.get("stop_loss_pct", 5.0)
@@ -145,7 +158,7 @@ async def auto_trade_loop():
             try:
                 add_log(f"🔍 [ROBÔ] Analisando {symbol}...")
                 
-                analysis = analyzer.analyze_symbol(symbol,settings)
+                analysis = analyzer.analyze_symbol(symbol, settings)
                 rec = analysis.get('recommendation', 'AGUARDAR')
                 price = analysis.get('current_price', 0)
                 
@@ -176,6 +189,13 @@ async def auto_trade_loop():
                         continue
                 
                 if rec == "COMPRAR":
+                    # 🔥 PROTEÇÃO 2: Verifica saldo USDT antes de comprar
+                    balance = portfolio.exchange.fetch_balance()
+                    free_usdt = balance['free'].get('USDT', 0.0)
+                    if free_usdt < trade_amount_usd:
+                        add_log(f"⚠️ Saldo insuficiente para comprar {symbol}: ${free_usdt:.2f} disponível")
+                        continue
+                    
                     add_log(f"🚀 [ROBÔ] Sinal de COMPRA {symbol}!")
                     portfolio.execute_trade(symbol, "COMPRAR", price, trade_amount_usd, reason="Sinal da IA", profit_pct=0.0)
                     
@@ -188,12 +208,17 @@ async def auto_trade_loop():
                 add_log(f"⚠️ Erro ao analisar {symbol}: {e}")
                 
             await asyncio.sleep(2)
+        
+        # 🔥 PROTEÇÃO 3: Pausa de 1 minuto entre ciclos completos
+        await asyncio.sleep(60)
 
 @app.post("/api/bot/toggle")
 async def toggle_bot():
-    global bot_running, bot_task
+    global bot_running, bot_task, bot_stop_reason  # ← adicione bot_stop_reason
+    
     bot_running = not bot_running
     if bot_running:
+        bot_stop_reason = ""  # 🔥 Limpa o motivo ao ligar
         print("🟢 IGNIÇÃO: Dando a partida no motor do robô...")
         bot_task = asyncio.create_task(auto_trade_loop())
     else:
@@ -202,7 +227,10 @@ async def toggle_bot():
 
 @app.get("/api/bot/status")
 def get_bot_status():
-    return {"running": bot_running}
+    return {
+        "running": bot_running,
+        "stop_reason": bot_stop_reason if not bot_running else ""
+    }
 
 @app.post("/api/trading/panic")
 async def execute_panic():
