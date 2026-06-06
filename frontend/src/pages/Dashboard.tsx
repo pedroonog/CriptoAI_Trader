@@ -556,7 +556,7 @@ export default function Dashboard() {
             </div>
 
             {/* MACD */}
-            <div className="bg-black/30 rounded-xl p-3 border border-gray-800/50">
+            {/* <div className="bg-black/30 rounded-xl p-3 border border-gray-800/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">MACD</span>
                 <span className={`text-lg font-black ${
@@ -571,7 +571,7 @@ export default function Dashboard() {
               <p className="text-[9px] text-gray-500 mt-1">
                 Sinal: {analysis?.macd?.signal?.toFixed(2) || '--'}
               </p>
-            </div>
+            </div>*/}
 
             {/* Score IA */}
             <div className="bg-black/30 rounded-xl p-3 border border-gray-800/50">
@@ -592,7 +592,7 @@ export default function Dashboard() {
             </div>
 
             {/* Volume */}
-            <div className="bg-black/30 rounded-xl p-3 border border-gray-800/50">
+            {/* <div className="bg-black/30 rounded-xl p-3 border border-gray-800/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">Volume</span>
                 <span className={`text-lg font-black ${
@@ -610,7 +610,7 @@ export default function Dashboard() {
               <p className="text-[9px] text-gray-500 mt-1">
                 {analysis?.volume_ratio > 1.5 ? `${analysis.volume_ratio.toFixed(1)}x` : 'Normal'}
               </p>
-            </div>
+            </div>*/}
           </div>
 
           {/* Gatilhos Visuais */}

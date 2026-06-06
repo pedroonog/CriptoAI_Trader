@@ -15,7 +15,7 @@ export default function Reports() {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const response = await api.get(`/reports?coin=${coinFilter}`);
+        const response = await api.get(`/reports?coin=${coinFilter}&days=${timeFilter}`);
         setReportData(response.data);
       } catch (error) {
         console.error("Erro ao buscar relatórios:", error);

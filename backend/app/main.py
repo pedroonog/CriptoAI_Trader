@@ -12,6 +12,7 @@ from app.logger import add_log, get_logs
 from app.services.analyzer import MarketAnalyzer
 from app.services.portfolio import PortfolioManager
 from typing import Dict, Any
+from datetime import datetime, timedelta        
 
 import ccxt
 import time 
@@ -278,32 +279,36 @@ def get_history(symbol: str):
 @app.get("/api/portfolio/profit")
 def get_profit(days: int = 7):
     try:
+        # Usa o cálculo REAL do portfolio em vez do fake
+        if days == 0:
+            profit = portfolio._get_profit_from_db(days=0)
+        elif days == 7:
+            profit = portfolio._get_profit_from_db(days=7)
+        elif days == 30:
+            profit = portfolio._get_profit_from_db(days=30)
+        else:
+            profit = portfolio._get_profit_from_db(days=days)
+        
+        # Conta os trades do período
         conn = sqlite3.connect("trades.db")
         cursor = conn.cursor()
-        cursor.execute('SELECT action, symbol, price, time FROM history')
-        rows = cursor.fetchall()
+        if days == 0:
+            hoje = datetime.now().strftime("%Y-%m-%d")
+            cursor.execute("SELECT COUNT(*) FROM history WHERE time LIKE ?", (f"{hoje}%",))
+        else:
+            data_limite = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            cursor.execute("SELECT COUNT(*) FROM history WHERE time >= ?", (data_limite,))
+        trades_count = cursor.fetchone()[0]
         conn.close()
-        
-        total_profit = 0.0
-        trades_in_period = 0
-        for r in rows:
-            action, symbol, price, time_str = r
-            trades_in_period += 1
-            if action == "VENDER":
-                total_profit += 2.50 
-            elif action == "COMPRAR":
-                total_profit -= 0.50 
-                
-        multiplier = 1 if days == 0 else (days / 30) if days <= 30 else 1
-        calculated_profit = total_profit * multiplier
         
         return {
             "period": f"{days} dias" if days > 0 else "Hoje",
-            "profit": round(calculated_profit, 2),
-            "trades_count": int(trades_in_period * multiplier)
+            "profit": round(profit, 2),
+            "profit_pct": 0,  # Opcional: pode calcular com base no capital inicial
+            "trades_count": trades_count
         }
     except Exception as e:
-        return {"profit": 0.0, "trades_count": 0, "error": str(e)}
+        return {"profit": 0.0, "profit_pct": 0, "trades_count": 0, "error": str(e)}
 
 @app.get("/api/backtest")
 def run_backtest(symbol: str = "BTC", days: int = 30):
@@ -367,7 +372,7 @@ def run_backtest(symbol: str = "BTC", days: int = 30):
 
 # === ROTA DE RELATÓRIOS (AGORA LENDO AS NOVAS COLUNAS!) ===
 @app.get("/api/reports")
-def get_reports(coin: str = "ALL"):
+def get_reports(coin: str = "ALL", days: int = 0):
     try:
         conn = sqlite3.connect("trades.db")
         cursor = conn.cursor()
@@ -474,6 +479,7 @@ def get_reports(coin: str = "ALL"):
         }
     except Exception as e:
         return {"error": str(e)}
+
 
 @app.get("/api/market/overview")
 def get_market_overview():
